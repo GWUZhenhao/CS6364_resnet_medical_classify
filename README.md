@@ -1,2 +1,2 @@
 # CS6364_resnet_medical_classify
-Using resnet to classify the medical images
+Using residual neural network to classify the medical images

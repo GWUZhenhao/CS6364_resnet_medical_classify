@@ -76,6 +76,7 @@ for index, row in df_master_1.iterrows():
         else:
             df_lym = df_lym.append({'Image': row[1], 'Category1': categories, 'Category2': ''}, ignore_index=True)
 
+# Count the number of every categories.
 print('The number of Eosinophil is {}'.format(df_eos.shape[0]))
 print('The number of Neutrophil is {}'.format(df_neu.shape[0]))
 print('The number of Basophil is {}'.format(df_bas.shape[0]))

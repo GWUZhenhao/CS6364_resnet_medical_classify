@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # This viable is the address of the dataset:
-dir_dataset = 'C:/Users/36394/Documents/GWU/GWU Fall 2021/CS 6364/Group project/Dataset'
+dir_dataset = 'D:/GWU/GWU Fall 2021/CS 6364/Group project/Dataset'
 
 # Read the csv into dataframe
 path_df_master_1 = os.path.join(dir_dataset, 'dataset-master/dataset-master/labels.csv')
@@ -30,9 +30,12 @@ df_mon = pd.DataFrame(columns=['Image', 'Category1', 'Category2'])
 df_bas = pd.DataFrame(columns=['Image', 'Category1', 'Category2'])
 df_lym = pd.DataFrame(columns=['Image', 'Category1', 'Category2'])
 
+num_double_class = 0
+
 # generate the dataframe for every categories.
 for index, row in df_master_1.iterrows():
     categories = row[2]
+    if ',' in categories: num_double_class += 1
     if 'NEUTROPHIL' in categories:
         if ',' in categories:
             category1 = categories.split(',')[0]
@@ -82,3 +85,5 @@ print('The number of Neutrophil is {}'.format(df_neu.shape[0]))
 print('The number of Basophil is {}'.format(df_bas.shape[0]))
 print('The number of Monocyte is {}'.format(df_mon.shape[0]))
 print('The number of Lymphocyte is {}'.format(df_lym.shape[0]))
+
+print('The number of double classes images is {}'.format(num_double_class))

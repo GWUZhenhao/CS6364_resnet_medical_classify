@@ -74,7 +74,6 @@ print(len(features))
 trainset_data = {'path_image':new_features,
                  'label':new_labels}
 df_trainset = pd.DataFrame(trainset_data)
-df_trainset, df_valset = train_test_split(df_trainset, test_size = 0.1)
 
 # Handle the data imbalance by double some classes
 # Double the Eosinophil class, 9 * Monocyte class and 6 * Lymphocyte class
@@ -96,5 +95,4 @@ print('num of Neu is {}'.format(new_df_trainset[new_df_trainset['label'] == 'NEU
 df_trainset = new_df_trainset
 
 df_holdoutset.to_csv(os.path.join(dir_row, 'holdoutset.csv'), index=None)
-df_valset.to_csv(os.path.join(dir_row, 'valset.csv'), index=None)
 df_trainset.to_csv(os.path.join(dir_row, 'trainset.csv'), index=None)

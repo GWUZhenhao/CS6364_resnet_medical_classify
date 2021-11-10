@@ -1,12 +1,9 @@
 from torchvision import models
-from tools import train, draw_loss, test
+from tools import sipit_cv, GridSearchCV
 import pandas as pd
 from torch import nn, optim
-from sklearn.model_selection import train_test_split
+from skorch import NeuralNetRegressor
 import os
-
-
-
 
 # Set up the dataset path.
 dir_dataset = 'D:/GWU/GWU Fall 2021/CS 6364/Group project/Dataset'
@@ -14,22 +11,8 @@ dir_row = os.path.join(dir_dataset, 'dataset-master/dataset-master')
 dir_img = os.path.join(dir_row, 'JPEGImages')
 path_df_trainset = os.path.join(dir_dataset, 'dataset-master/dataset-master/trainset.csv')
 path_df_holdoutset = os.path.join(dir_dataset, 'dataset-master/dataset-master/holdoutset.csv')
-path_df_valset = os.path.join(dir_dataset, 'dataset-master/dataset-master/valset.csv')
 df_trainset = pd.read_csv(path_df_trainset)
 df_holdoutset = pd.read_csv(path_df_holdoutset)
-df_trainset, df_valset = train_test_split(df_trainset, test_size = 0.1)
-
-
-
-# # Peek the image after preprocessing.
-# tensor_image, label = next(iter(train_loader))['image'], next(iter(train_loader))['label'] # returns a batch of images
-# print("Label of image", label[0])
-# first_image = np.array(tensor_image, dtype='float')[0] # get the first image in the batch
-# print(first_image.shape)
-# #rerange the dimention to show the image.
-# npimg = np.transpose(first_image,(1,2,0))
-# plt.imshow(npimg)
-# plt.show()
 
 # Download the pretrained model.
 # resnet 34:
@@ -44,21 +27,39 @@ resnet34.fc = nn.Sequential(
     nn.Linear(10, 4),
     nn.LogSoftmax(dim=1)
 )
-
 # Put the model in the GPU
 resnet34 = resnet34.cuda()
 
-# Train the model
-epochs = 10
-loss_func = nn.NLLLoss()
-optimizer = optim.Adam(resnet34.parameters())
-resnet34, history = train(resnet34, df_trainset, df_valset, epochs, loss_func, optimizer)
-
-# Draw the loss graph
-draw_loss(history)
-
-# Test the accuracy on the holdout set
-test(resnet34, df_holdoutset)
-resnet34.cpu()
+# net = NeuralNetRegressor(resnet34, optimizer=optim.Adam, criterion=nn.NLLLoss, verbose=1, device='cuda')
+params = {
+    'optimizer': [optim.Adam, optim.Adadelta], # We can also try optim.SGD
+    'epochs': [1, 2],
+    'criterion': [nn.NLLLoss, nn.CrossEntropyLoss]
+}
+cv_dataset = sipit_cv(df_trainset, 5)
+best_param = GridSearchCV(resnet34, cv_dataset, params)
 
 
+
+
+
+
+
+
+
+
+
+
+
+# gs = GridSearchCV(net, params, refit=False, scoring='r2', verbose=1, cv=10)
+# train_set = Dataset(df=df_trainset, transform=data_transform['train'])
+# train_loader = torch.utils.data.DataLoader(train_set, batch_size=1)
+# images = torch.empty([len(train_loader), 3, 224, 224])
+# labels = torch.empty([len(train_loader), 1])
+# for index, data in enumerate(train_loader):
+#     image = data['image']
+#     label = data['label']
+#     images[index] = image[0]
+#     labels[index] = label
+# # net.fit(train_set, y=None)
+# gs.fit(images, labels)

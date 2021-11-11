@@ -27,13 +27,12 @@ resnet34.fc = nn.Sequential(
     nn.Linear(10, 4),
     nn.LogSoftmax(dim=1)
 )
-# Put the model in the GPU
-resnet34 = resnet34.cuda()
+
 
 # net = NeuralNetRegressor(resnet34, optimizer=optim.Adam, criterion=nn.NLLLoss, verbose=1, device='cuda')
 params = {
-    'optimizer': [optim.Adam, optim.Adadelta], # We can also try optim.SGD
-    'epochs': [1, 2],
+    'optimizer': [optim.SGD(resnet34.parameters(), 0.01), optim.Adam(resnet34.parameters())], # We can also try optim.SGD
+    'epochs': [3, 4],
     'criterion': [nn.NLLLoss, nn.CrossEntropyLoss]
 }
 cv_dataset = sipit_cv(df_trainset, 5)

@@ -70,43 +70,69 @@ class Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.df_len
 
+# This function implement the gridsearchCV
 def GridSearchCV(model, cv_dataset, params):
     optimizers = params['optimizer']
     epochs = params['epochs']
     criterions = params['criterion']
-    loss_best = 1000
+    accuracy_best = 0
     best_param = []
+    index = 1
+    print('Grid Searching begins:')
     for optimizer in optimizers:
         for num_epoch in epochs:
             for criterion in criterions:
-                optim = optimizer(model.parameters())
+                print('Try the {} hyper parameters:'.format(index))
+                print('number of epochs = {}, optimizer = {}, criterion = {}'.format(num_epoch, optimizer, criterion))
+                start = time.time()
+                optim = optimizer
                 criterion = criterion()
-                k_best, k_loss_best = CV_training(model, cv_dataset, num_epoch, criterion, optim)
-                if k_loss_best < loss_best:
-                    loss_best = k_loss_best
+                k_best, k_accuracy_best = CV_training(model, cv_dataset, num_epoch, criterion, optim)
+                if k_accuracy_best > accuracy_best:
+                    accuracy_best = k_accuracy_best
                     best_param = {'optimizer': optim, 'epochs': num_epoch, 'criterion': criterion}
-                print(best_param)
+                time_cost = time.time() - start
+                print('Finished... Time consumption: {:.3f}'.format(time_cost))
+                print('This CV best accuracy = {:.3f}'. format(k_accuracy_best))
+                print()
+                index += 1
+    print('The grid search finished, the best hyper parameter is:')
+    print('number of epochs = {}, optimizer = {}, criterion = {}'.format(best_param['epochs'], best_param['optimizer'], best_param['criterion']))
     return best_param
+
+def sipit_cv(df_trainset, k):
+    skf = StratifiedKFold(n_splits=k)
+    df_feature = df_trainset.iloc[:,:-1]
+    df_label = df_trainset.iloc[:,-1]
+    cv_dataset = []
+    for fold, (train_idx, val_idx) in enumerate(skf.split(df_feature, df_label)):
+        k_fold_dataset = {'train': df_trainset.iloc[train_idx,:], 'validation': df_trainset.iloc[val_idx,:]}
+        cv_dataset.append(k_fold_dataset)
+    return cv_dataset
 
 def CV_training(model, cv_dataset, epochs, loss_func, optimizer):
     k_best = 0
-    k_loss_best = 1000
+    k_accuracy_best = 0
     for k, k_fold_datset in enumerate(cv_dataset):
+        model_k = copy.deepcopy(model)
         df_trainset = k_fold_datset['train']
         df_valset = k_fold_datset['validation']
-        k_model, k_history = train_silence(model, df_trainset, df_valset, epochs, loss_func, optimizer)
-        k_loss = k_history['loss_best']
-        if k_loss < k_loss_best:
+        k_model, k_history = train_silence(model_k, df_trainset, df_valset, epochs, loss_func, optimizer)
+        k_accuracy = k_history['val_accuracy']
+        if k_accuracy > k_accuracy_best:
             k_best = k
-            k_loss_best = k_loss
-    return k_best, k_loss_best
+            k_accuracy_best = k_accuracy
+    return k_best, k_accuracy_best
 
 def train(model, df_trainset, df_valset, epochs, loss_func, optimizer):
+    # Put the model in the GPU
+    model = model.cuda()
     epochs_training_loss = np.array([], dtype='float64')
     epochs_val_loss = np.array([], dtype='float64')
     model_best = model
     loss_best = 1000
     epoch_best = 0
+    accuracy = 0
     history = {}
 
     # Generate the data loader.
@@ -149,6 +175,7 @@ def train(model, df_trainset, df_valset, epochs, loss_func, optimizer):
         # Evaluate the model
         # Compute the evaluation loss
         model.eval()  # Turn off the model training, begin evaluate
+        right_predict = 0
         for batch in validation_loader:
             images = batch['image']
             labels = batch['label']
@@ -156,7 +183,9 @@ def train(model, df_trainset, df_valset, epochs, loss_func, optimizer):
             images, labels = images.cuda(), labels.cuda()
             predictions = model(images)  # predict labels
             loss_val = loss_func(predictions, labels)  # calculate the loss
+            right_predict += torch.sum(torch.argmax(predictions, axis=1) == labels)
             val_running_loss += loss_val.item()
+        accuracy = right_predict / df_valset.shape[0]
 
         if val_running_loss / len(validation_loader) < loss_best:
             loss_best = val_running_loss / len(validation_loader)
@@ -175,14 +204,18 @@ def train(model, df_trainset, df_valset, epochs, loss_func, optimizer):
     history['validation_loss'] = epochs_val_loss
     history['epoch_best'] = epoch_best
     history['loss_best'] = loss_best
+    history['val_accuracy'] = accuracy
     return(model_best, history)
 
 def train_silence(model, df_trainset, df_valset, epochs, loss_func, optimizer):
+    # Put the model in the GPU
+    model = model.cuda()
     epochs_training_loss = np.array([], dtype='float64')
     epochs_val_loss = np.array([], dtype='float64')
     model_best = model
     loss_best = 1000
     epoch_best = 0
+    accuracy = 0
     history = {}
 
     # Generate the data loader.
@@ -221,6 +254,7 @@ def train_silence(model, df_trainset, df_valset, epochs, loss_func, optimizer):
         # Evaluate the model
         # Compute the evaluation loss
         model.eval()  # Turn off the model training, begin evaluate
+        right_predict = 0
         for batch in validation_loader:
             images = batch['image']
             labels = batch['label']
@@ -228,7 +262,9 @@ def train_silence(model, df_trainset, df_valset, epochs, loss_func, optimizer):
             images, labels = images.cuda(), labels.cuda()
             predictions = model(images)  # predict labels
             loss_val = loss_func(predictions, labels)  # calculate the loss
+            right_predict += torch.sum(torch.argmax(predictions, axis=1) == labels)
             val_running_loss += loss_val.item()
+        accuracy = right_predict / df_valset.shape[0]
 
         if val_running_loss / len(validation_loader) < loss_best:
             loss_best = val_running_loss / len(validation_loader)
@@ -243,6 +279,7 @@ def train_silence(model, df_trainset, df_valset, epochs, loss_func, optimizer):
     history['validation_loss'] = epochs_val_loss
     history['epoch_best'] = epoch_best
     history['loss_best'] = loss_best
+    history['val_accuracy'] = accuracy
     return(model_best, history)
 
 def draw_loss(history):
@@ -278,12 +315,4 @@ def test(model, df_holdoutset):
     print('The number of total prediction is {}'.format(num_predict))
     print('The accuracy is {}'.format(num_right_predict / num_predict))
 
-def sipit_cv(df_trainset, k):
-    skf = StratifiedKFold(n_splits=k)
-    df_feature = df_trainset.iloc[:,:-1]
-    df_label = df_trainset.iloc[:,-1]
-    cv_dataset = []
-    for fold, (train_idx, val_idx) in enumerate(skf.split(df_feature, df_label)):
-        k_fold_dataset = {'train': df_trainset.iloc[train_idx,:], 'validation': df_trainset.iloc[val_idx,:]}
-        cv_dataset.append(k_fold_dataset)
-    return cv_dataset
+

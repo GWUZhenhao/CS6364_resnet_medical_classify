@@ -1,5 +1,5 @@
 from torchvision import models
-from tools import train, draw_loss, test
+from tools import train, draw_loss, test, plot_confusion_matrix, print_statistic_information, draw_accuracy
 import pandas as pd
 from torch import nn, optim
 from sklearn.model_selection import train_test_split
@@ -49,7 +49,7 @@ resnet34.fc = nn.Sequential(
 resnet34 = resnet34.cuda()
 
 # Train the model
-epochs = 10
+epochs = 20
 loss_func = nn.NLLLoss()
 optimizer = optim.Adam(resnet34.parameters())
 resnet34, history = train(resnet34, df_trainset, df_valset, epochs, loss_func, optimizer)
@@ -57,8 +57,18 @@ resnet34, history = train(resnet34, df_trainset, df_valset, epochs, loss_func, o
 # Draw the loss graph
 draw_loss(history)
 
+# Draw the accuracy comparison graph
+draw_accuracy(history)
+
 # Test the accuracy on the holdout set
-test(resnet34, df_holdoutset)
+confusion_matirx = test(resnet34, df_holdoutset)
+
+# Plot the confusion matrix
+classes = ['NEUTROPHIL', 'EOSINOPHIL', 'MONOCYTE', 'LYMPHOCYTE']
+plot_confusion_matrix(confusion_matirx, classes)
+
+# Print the statistic information:
+print_statistic_information(confusion_matirx, classes)
+
+# Put the model back to CPU
 resnet34.cpu()
-
-

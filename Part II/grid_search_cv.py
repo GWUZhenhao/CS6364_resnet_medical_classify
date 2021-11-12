@@ -2,7 +2,6 @@ from torchvision import models
 from tools import sipit_cv, GridSearchCV
 import pandas as pd
 from torch import nn, optim
-from skorch import NeuralNetRegressor
 import os
 
 # Set up the dataset path.
@@ -29,10 +28,13 @@ resnet34.fc = nn.Sequential(
 )
 
 
-# net = NeuralNetRegressor(resnet34, optimizer=optim.Adam, criterion=nn.NLLLoss, verbose=1, device='cuda')
+
+optimizer_1 = optim.SGD(resnet34.parameters(), 0.01)
+optimizer_2 = optim.Adam(resnet34.parameters())
+optimizer_3 = optim.Adam([{'params':[ param for name, param in resnet34.named_parameters() if 'layer' in name]}], lr=0.1)
 params = {
-    'optimizer': [optim.SGD(resnet34.parameters(), 0.01), optim.Adam(resnet34.parameters())], # We can also try optim.SGD
-    'epochs': [3, 4],
+    'optimizer': [optimizer_1, optimizer_2, optimizer_3],
+    'epochs': [20],
     'criterion': [nn.NLLLoss, nn.CrossEntropyLoss]
 }
 cv_dataset = sipit_cv(df_trainset, 5)
@@ -48,8 +50,8 @@ best_param = GridSearchCV(resnet34, cv_dataset, params)
 
 
 
-
-
+# from skorch import NeuralNetRegressor
+# net = NeuralNetRegressor(resnet34, optimizer=optim.Adam, criterion=nn.NLLLoss, verbose=1, device='cuda')
 # gs = GridSearchCV(net, params, refit=False, scoring='r2', verbose=1, cv=10)
 # train_set = Dataset(df=df_trainset, transform=data_transform['train'])
 # train_loader = torch.utils.data.DataLoader(train_set, batch_size=1)

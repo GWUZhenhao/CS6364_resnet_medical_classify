@@ -52,6 +52,10 @@ resnet34 = resnet34.cuda()
 epochs = 20
 loss_func = nn.NLLLoss()
 optimizer = optim.Adam(resnet34.parameters())
+# Using this optimizer to freeze some of the layers.
+# optimizer_1 = optim.Adam([{'params':[ param for name, param in resnet34.named_parameters() if 'layer' in name]}], lr=0.1)
+
+
 resnet34, history = train(resnet34, df_trainset, df_valset, epochs, loss_func, optimizer)
 
 # Draw the loss graph

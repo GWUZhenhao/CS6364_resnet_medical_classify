@@ -1,8 +1,9 @@
 from torchvision import models
-from tools import sipit_cv, GridSearchCV
+from tools import sipit_cv, GridSearchCV, train, train_silence
 import pandas as pd
 from torch import nn, optim
 import os
+from sklearn.model_selection import train_test_split
 
 # Set up the dataset path.
 dir_dataset = 'D:/GWU/GWU Fall 2021/CS 6364/Group project/Dataset'
@@ -12,6 +13,7 @@ path_df_trainset = os.path.join(dir_dataset, 'dataset-master/dataset-master/trai
 path_df_holdoutset = os.path.join(dir_dataset, 'dataset-master/dataset-master/holdoutset.csv')
 df_trainset = pd.read_csv(path_df_trainset)
 df_holdoutset = pd.read_csv(path_df_holdoutset)
+df_trainset, _ = train_test_split(df_trainset, test_size = 0.1)
 
 # Download the pretrained model.
 # resnet 34:
@@ -28,16 +30,19 @@ resnet34.fc = nn.Sequential(
 )
 
 
+optimizer_1 = optim.Adam
+optimizer_2 = optim.SGD
 
-optimizer_1 = optim.SGD(resnet34.parameters(), 0.01)
-optimizer_2 = optim.Adam(resnet34.parameters())
-optimizer_3 = optim.Adam([{'params':[ param for name, param in resnet34.named_parameters() if 'layer' in name]}], lr=0.1)
+criterion_1 = nn.NLLLoss()
+criterion_2 = nn.CrossEntropyLoss()
 params = {
-    'optimizer': [optimizer_1, optimizer_2, optimizer_3],
-    'epochs': [20],
-    'criterion': [nn.NLLLoss, nn.CrossEntropyLoss]
+    'optimizer': [optimizer_1, optimizer_2],
+    'lr': [0.01, 0.001],
+    'criterion': [criterion_1, criterion_2]
 }
 cv_dataset = sipit_cv(df_trainset, 5)
+
+
 best_param = GridSearchCV(resnet34, cv_dataset, params)
 
 
@@ -45,11 +50,15 @@ best_param = GridSearchCV(resnet34, cv_dataset, params)
 
 
 
+# # Testing code
+# op = optim.Adam(resnet34.parameters())
+# df_trainset = cv_dataset[0]['train']
+# df_valset = cv_dataset[0]['validation']
+# resnet34, history = train_silence(resnet34, df_trainset, df_valset, 10, criterion_1, op)
 
 
 
-
-
+# # Another way to do the grid search, but still need time to study about it.
 # from skorch import NeuralNetRegressor
 # net = NeuralNetRegressor(resnet34, optimizer=optim.Adam, criterion=nn.NLLLoss, verbose=1, device='cuda')
 # gs = GridSearchCV(net, params, refit=False, scoring='r2', verbose=1, cv=10)

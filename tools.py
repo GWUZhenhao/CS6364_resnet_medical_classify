@@ -40,6 +40,7 @@ class Dataset(torch.utils.data.Dataset):
         self.df = df
         self.df_len = df.shape[0]
         self.transform = transform
+        self.labels = np.unique(df.iloc[:, 1].values).tolist()
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
@@ -53,16 +54,9 @@ class Dataset(torch.utils.data.Dataset):
 
         # Read label
         label = self.df.iloc[index, 1]
-        if label == 'NEUTROPHIL':
-            label = 0
-        elif label == 'EOSINOPHIL':
-            label = 1
-        elif label == 'MONOCYTE':
-            label = 2
-        elif label == 'LYMPHOCYTE':
-            label = 3
-        else:
-            raise Exception('Error: invalid class, index = {}'.format(index))
+        for ind, value in enumerate(self.labels):
+            if value == label:
+                label = ind
 
         sample = {'image': img, 'label': label}
         return sample
